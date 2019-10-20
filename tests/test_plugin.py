@@ -1,4 +1,4 @@
-# Copyright (c) 2018, Matt Layman
+# Copyright (c) 2019, Matt Layman
 
 import pytest
 
@@ -136,4 +136,28 @@ def test_xfail_strict_function(testdir):
             "not ok 2 test_xfail_strict_function.py::test_broken # TODO",
             "# [XPASS(strict)] a reason",
         ]
+    )
+
+
+def test_setup_failure(testdir):
+    """A failure in test setup is marked as an error.
+
+    See https://github.com/python-tap/pytest-tap/issues/39.
+    """
+    testdir.makepyfile(
+        """
+        import pytest
+
+        @pytest.fixture
+        def bad_fixture():
+            raise Exception('boom')
+
+        def test_with_bad_fixture(bad_fixture):
+            assert True
+    """
+    )
+    result = testdir.runpytest_subprocess("--tap-stream")
+
+    result.stdout.fnmatch_lines(
+        ["1..1", "not ok 1 test_setup_failure.py::test_with_bad_fixture"]
     )

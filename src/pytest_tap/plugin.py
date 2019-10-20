@@ -1,4 +1,4 @@
-# Copyright (c) 2018, Matt Layman
+# Copyright (c) 2019, Matt Layman
 
 try:
     from cStringIO import StringIO
@@ -90,10 +90,12 @@ def pytest_runtest_logreport(report):
     if not ENABLED:
         return
 
-    if not (
+    is_trackable_result = (
         (report.when == "setup" and report.outcome == "skipped")
+        or (report.when == "setup" and report.outcome == "failed")
         or report.when == "call"
-    ):
+    )
+    if not is_trackable_result:
         return
 
     description = str(report.location[0]) + "::" + str(report.location[2])
