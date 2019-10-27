@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     setup(
         name="pytest-tap",
-        version="2.3",
+        version="2.4",
         url="https://github.com/python-tap/pytest-tap",
         license="BSD",
         author="Matt Layman",
@@ -69,9 +69,9 @@ if __name__ == "__main__":
             "License :: OSI Approved :: BSD License",
             "Operating System :: OS Independent",
             "Programming Language :: Python :: 2.7",
-            "Programming Language :: Python :: 3.4",
             "Programming Language :: Python :: 3.5",
             "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: Implementation :: PyPy",
             "Topic :: Software Development :: Testing",
         ],

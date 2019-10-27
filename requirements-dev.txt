@@ -1,0 +1,9 @@
+babel
+bump2version
+flake8
+requests
+tox
+twine
+black
+pre-commit
+-e .
