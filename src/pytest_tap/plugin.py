@@ -1,18 +1,8 @@
-# Copyright (c) 2019, Matt Layman
-
-try:
-    from cStringIO import StringIO
-except ImportError:  # pragma: no cover
-    from io import StringIO
 import sys
 
-from py.io import TerminalWriter
 import pytest
-import six
 from tap.formatter import format_as_diagnostics
 from tap.tracker import Tracker
-
-from pytest_tap.i18n import _
 
 # Because of how pytest hooks work, there is not much choice
 # except to use module level state. Ugh.
@@ -27,24 +17,24 @@ def pytest_addoption(parser):
         "--tap-stream",
         default=False,
         action="store_true",
-        help=_("Stream TAP output instead of the default test runner output."),
+        help="Stream TAP output instead of the default test runner output.",
     )
     group.addoption(
         "--tap-files",
         default=False,
         action="store_true",
-        help=_("Store all TAP test results into individual files per test case."),
+        help="Store all TAP test results into individual files per test case.",
     )
     group.addoption(
         "--tap-combined",
         default=False,
         action="store_true",
-        help=_("Store all TAP test results into a combined output file."),
+        help="Store all TAP test results into a combined output file.",
     )
     group.addoption(
         "--tap-outdir",
         metavar="path",
-        help=_(
+        help=(
             "An optional output directory to write TAP files to. "
             "If the directory does not exist, it will be created."
         ),
@@ -54,16 +44,21 @@ def pytest_addoption(parser):
 @pytest.mark.trylast
 def pytest_configure(config):
     """Set all the options before the test run."""
+    # The help printing uses the terminalreporter,
+    # which is unregistered by the streaming mode.
+    if config.option.help:
+        return
+
     global ENABLED
     ENABLED = (
-        config.getoption("tap_stream")
-        or config.getoption("tap_combined")
-        or config.getoption("tap_files")
+        config.option.tap_stream
+        or config.option.tap_combined
+        or config.option.tap_files
     )
 
-    tracker.outdir = config.getoption("tap_outdir")
-    tracker.combined = config.getoption("tap_combined")
-    if config.getoption("tap_stream"):
+    tracker.outdir = config.option.tap_outdir
+    tracker.combined = config.option.tap_combined
+    if config.option.tap_stream:
         reporter = config.pluginmanager.getplugin("terminalreporter")
         if reporter:
             config.pluginmanager.unregister(reporter)
@@ -78,11 +73,9 @@ def pytest_configure(config):
 
 def pytest_runtestloop(session):
     """Output the plan line first."""
-    if ENABLED:
-        if session.config.getoption("tap_stream") or session.config.getoption(
-            "tap_combined"
-        ):
-            tracker.set_plan(session.testscollected)
+    option = session.config.option
+    if ENABLED and (option.tap_stream or option.tap_combined):
+        tracker.set_plan(session.testscollected)
 
 
 def pytest_runtest_logreport(report):
@@ -104,31 +97,42 @@ def pytest_runtest_logreport(report):
     # Handle xfails first because they report in unusual ways.
     # Non-strict xfails will include `wasxfail` while strict xfails won't.
     if hasattr(report, "wasxfail"):
-        directive = ""
-        if report.skipped:
-            directive = "TODO expected failure: {}".format(report.wasxfail)
-        elif report.passed:
-            directive = "TODO unexpected success: {}".format(report.wasxfail)
+        reason = ""
+        # pytest adds an ugly "reason: " for expectedFailure
+        # even though the standard library doesn't accept a reason for that decorator.
+        # Ignore the "reason: " from pytest.
+        if report.wasxfail and report.wasxfail != "reason: ":
+            reason = ": {}".format(report.wasxfail)
 
-        tracker.add_ok(testcase, description, directive=directive)
+        if report.skipped:
+            directive = "TODO expected failure{}".format(reason)
+            tracker.add_not_ok(testcase, description, directive=directive)
+        elif report.passed:
+            directive = "TODO unexpected success{}".format(reason)
+            tracker.add_ok(testcase, description, directive=directive)
     elif report.passed:
         tracker.add_ok(testcase, description)
     elif report.failed:
         diagnostics = _make_as_diagnostics(report)
 
-        # strict xfail mode should include the todo directive.
-        # The only indicator that strict xfail occurred for this report
-        # is to check longrepr.
-        directive = ""
-        if (
-            isinstance(report.longrepr, six.string_types)
-            and "[XPASS(strict)]" in report.longrepr
-        ):
-            directive = "TODO"
+        # pytest treats an unexpected success from unitest.expectedFailure as a failure.
+        # To match up with TAPTestResult and the TAP spec, treat the pass
+        # as an ok with a todo directive instead.
+        if "Unexpected success" in str(report.longrepr):
+            tracker.add_ok(testcase, description, directive="TODO unexpected success")
+            return
 
-        tracker.add_not_ok(
-            testcase, description, directive=directive, diagnostics=diagnostics
-        )
+        # A strict xfail that passes (i.e., XPASS) should be marked as a failure.
+        # The only indicator that strict xfail occurred for XPASS is to check longrepr.
+        if isinstance(report.longrepr, str) and "[XPASS(strict)]" in report.longrepr:
+            tracker.add_not_ok(
+                testcase,
+                description,
+                directive="unexpected success: {}".format(report.longrepr),
+            )
+            return
+
+        tracker.add_not_ok(testcase, description, diagnostics=diagnostics)
     elif report.skipped:
         reason = report.longrepr[2].split(":", 1)[1].strip()
         tracker.add_skip(testcase, description, reason)
@@ -136,10 +140,7 @@ def pytest_runtest_logreport(report):
 
 def _make_as_diagnostics(report):
     """Format a report as TAP diagnostic output."""
-    out = StringIO()
-    tw = TerminalWriter(file=out)
-    report.toterminal(tw)
-    lines = out.getvalue().splitlines(True)
+    lines = report.longreprtext.splitlines(keepends=True)
     return format_as_diagnostics(lines)
 
 
