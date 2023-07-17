@@ -1,10 +1,15 @@
 Releases
 ========
 
-Version 3.4, To Be Released
----------------------------
+Version 3.4, July 15, 2023
+--------------------------
 
+* Deprecate ``--tap-stream`` in favor of ``--tap`` for streaming mode.
+* When using xdist, report the plan at the beginning of execution.
+* Add support for Python 3.11.
+* Drop support for Python 3.7 (it is end-of-life).
 * Drop support for Python 3.6 (it is end-of-life).
+* Drop support for PyPy.
 
 Version 3.3, October 27, 2021
 -----------------------------

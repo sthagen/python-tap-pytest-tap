@@ -3,8 +3,11 @@ pytest-tap is a reporting plugin for pytest that outputs
 `Test Anything Protocol (TAP) <http://testanything.org/>`_ data.
 TAP is a line based test protocol for recording test data in a standard way.
 
-Follow development on `GitHub <https://github.com/python-tap/pytest-tap>`_.
-Developer documentation is on
+Use ``pytest --tap`` after installing to get started.
+
+Follow `GitHub <https://github.com/python-tap/pytest-tap>`_
+for more information or to follow this plugin's development.
+Additional developer documentation about Python and TAP is on
 `Read the Docs <https://tappy.readthedocs.io/>`_.
 """
 
@@ -19,7 +22,7 @@ if __name__ == "__main__":
 
     setup(
         name="pytest-tap",
-        version="3.3",
+        version="3.4",
         url="https://github.com/python-tap/pytest-tap",
         license="BSD",
         author="Matt Layman",
